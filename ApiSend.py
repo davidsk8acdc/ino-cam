@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+
+#1.0 [DAVID H.] - 10-10-25
+
 import os
 import requests
 import time
@@ -6,9 +9,9 @@ import subprocess
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 
-API_URL = "http://100.73.18.35:5000/upload"
+API_URL = "https://trackerprime.inoprime.com.br/api/infractions"
 VIDEO_DIR = "videos"
-INTERVALO = 30  # segundos entre tentativas
+INTERVALO = 10  # segundos entre tentativas
 LOG_FILE = "logs/cliente.log"
 MAX_THREADS = 3
 
@@ -106,10 +109,9 @@ def enviar_video(caminho):
         with open(caminho, "rb") as f:
             files = {"file": (video, f, "video/mp4")}
             data = {
-                "id": RASPBERRY_ID,
+                "device_id": RASPBERRY_ID,
                 "type": tipo,
                 "datetime": datahora,
-                "modem_id": modem_id or "desconhecido"
             }
             r = requests.post(API_URL, files=files, data=data, timeout=300, stream=True)
 
