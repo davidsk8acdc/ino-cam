@@ -1,2 +1,9 @@
 1 -> chmod +x instalar.sh
 2 -> ./instalar.sh
+
+
+//COMANDO ID 
+3 --> cat /proc/cpuinfo | grep Serial
+
+cd ino-cam/logs
+tail -f reconhecimento_2025-10-11.log detec_2025-10-11.log cliente.log

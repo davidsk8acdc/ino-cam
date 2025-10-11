@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
-#1.0 [DAVID H.] - 10-10-25
+# 2.0 [DAVID H. / Gemini] - 11-10-25
+# - Adicionada thread de captura dedicada com logica de reconexao (retry).
+# - Implementado padrao produtor/consumidor com queue.Queue para desacoplar captura e analise.
 
 import face_recognition
 import cv2
@@ -8,25 +10,10 @@ import numpy as np
 import os
 import time
 import pickle
-from threading import Thread
+import threading
+import queue
 import logging
 from datetime import datetime
-
-# (A classe VideoStream continua a mesma)
-class VideoStream:
-    def __init__(self, src=0):
-        self.stream = cv2.VideoCapture(src, cv2.CAP_FFMPEG)
-        (self.grabbed, self.frame) = self.stream.read()
-        self.stopped = False
-    def start(self):
-        Thread(target=self.update, args=()).start()
-        return self
-    def update(self):
-        while True:
-            if self.stopped: self.stream.release(); return
-            (self.grabbed, self.frame) = self.stream.read()
-    def read(self): return self.frame
-    def stop(self): self.stopped = True
 
 # --- CONFIGURACOES ---
 RTSP_URL = "rtsp://admin:Arvore32!@192.168.18.10:554/cam/realmonitor?channel=1&subtype=1" #david
@@ -37,7 +24,7 @@ RESIZE_FACTOR = 1
 TOLERANCE = 0.55
 PROCESS_EVERY_N_FRAMES = 10
 CHECK_FOR_UPDATES_INTERVAL = 15
-MAX_ANALYSIS_FAILURES = 3
+RECONNECT_DELAY_SECONDS = 5
 
 # --- NOVAS CONFIGURACOES DE LOG E CAPTURA ---
 LOGS_DIR = 'logs'
@@ -54,7 +41,7 @@ os.makedirs(CAPTURAS_DIR, exist_ok=True)
 log_filename = os.path.join(LOGS_DIR, f"reconhecimento_{datetime.now().strftime('%Y-%m-%d')}.log")
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
+    format="%(asctime)s [%(threadName)s] [%(levelname)s] %(message)s",
     handlers=[logging.FileHandler(log_filename), logging.StreamHandler()]
 )
 
@@ -74,20 +61,75 @@ def load_encodings(file_path):
         logging.error(f"Nao foi possivel carregar o arquivo de encodings: {e}")
         return [], []
 
+# --- NOVA THREAD DE CAPTURA COM RETRY ---
+def video_capture_thread(rtsp_url, frame_queue, stop_event):
+    """
+    Thread dedicada a capturar frames da stream RTSP e coloca-los em uma fila.
+    Tenta reconectar automaticamente em caso de falha.
+    """
+    logging.info("Thread de captura iniciada.")
+    while not stop_event.is_set():
+        cap = None
+        try:
+            logging.info(f"Tentando conectar a stream RTSP: {rtsp_url}")
+            cap = cv2.VideoCapture(rtsp_url, cv2.CAP_FFMPEG)
+            
+            if not cap.isOpened():
+                logging.error(f"Nao foi possivel abrir a stream. Tentando novamente em {RECONNECT_DELAY_SECONDS}s...")
+                time.sleep(RECONNECT_DELAY_SECONDS)
+                continue
+
+            logging.info("Stream RTSP conectada com sucesso!")
+            while not stop_event.is_set():
+                ret, frame = cap.read()
+                
+                if not ret:
+                    logging.warning("Stream de video perdida. Tentando reconectar...")
+                    break # Sai do loop interno para tentar reconectar no loop externo
+
+                # Garante que a fila sempre tenha o frame mais recente
+                if frame_queue.full():
+                    try:
+                        frame_queue.get_nowait() # Descarta frame antigo
+                    except queue.Empty:
+                        pass
+                frame_queue.put(frame)
+        
+        except Exception as e:
+            logging.error(f"Erro inesperado na thread de captura: {e}")
+            time.sleep(RECONNECT_DELAY_SECONDS)
+        
+        finally:
+            if cap is not None:
+                cap.release()
+                logging.info("Recurso de captura liberado.")
+                
+    logging.info("Thread de captura finalizada.")
+
+
 # --- PASSO 1: CARREGAMENTO INICIAL ---
 known_face_encodings, known_face_names = load_encodings(ENCODINGS_FILE)
 last_modified_time = os.path.getmtime(ENCODINGS_FILE) if os.path.exists(ENCODINGS_FILE) else 0
 last_check_time = time.time()
 
-# --- PASSO 2: INICIALIZAR CAPTURA DE VIDEO ---
-logging.info(f"Iniciando stream da camera...")
-vs = VideoStream(src=RTSP_URL).start()
-time.sleep(2.0)
-logging.info("Camera conectada. Pressione CTRL+C para sair.")
+# --- PASSO 2: INICIALIZAR CAPTURA DE VIDEO EM THREAD SEPARADA ---
+frame_queue = queue.Queue(maxsize=1)
+stop_event = threading.Event()
+
+capture_thread = threading.Thread(
+    target=video_capture_thread, 
+    args=(RTSP_URL, frame_queue, stop_event),
+    name="CaptureThread"
+)
+capture_thread.daemon = True # Permite que o programa principal saia mesmo que a thread esteja rodando
+capture_thread.start()
+
+logging.info("Aguardando o primeiro frame da camera...")
+time.sleep(5.0) # Espera um pouco para a conexao ser estabelecida
+logging.info("Sistema iniciado. Pressione CTRL+C para sair.")
 
 # --- VARIAVEIS DE CONTROLE ---
 frame_counter = 0
-analysis_failures = 0
 last_log_time = {}
 last_save_time = {}
 seen_unknown_faces = {}
@@ -97,12 +139,22 @@ unknown_counter = 0
 try:
     while True:
         current_time = time.time()
-        # ... (bloco de checagem de atualizacao do pickle continua o mesmo) ...
+        
+        # --- Bloco de checagem de atualizacao do pickle ---
+        if current_time - last_check_time > CHECK_FOR_UPDATES_INTERVAL:
+            last_check_time = current_time
+            if os.path.exists(ENCODINGS_FILE):
+                current_modified_time = os.path.getmtime(ENCODINGS_FILE)
+                if current_modified_time > last_modified_time:
+                    logging.info("Arquivo de encodings modificado. Recarregando...")
+                    known_face_encodings, known_face_names = load_encodings(ENCODINGS_FILE)
+                    last_modified_time = current_modified_time
 
-        frame = vs.read()
-        if frame is None:
-            logging.warning("Frame nulo recebido da camera.")
-            time.sleep(2.0)
+        try:
+            # Tenta obter o frame mais recente da fila, com timeout
+            frame = frame_queue.get(timeout=2.0)
+        except queue.Empty:
+            logging.warning("Nenhum frame recebido da camera. Verificando conexao...")
             continue
 
         if frame_counter % PROCESS_EVERY_N_FRAMES == 0:
@@ -119,7 +171,8 @@ try:
                 name = "Desconhecido"
 
                 if True in matches:
-                    best_match_index = np.argmin(face_recognition.face_distance(known_face_encodings, encoding))
+                    face_distances = face_recognition.face_distance(known_face_encodings, encoding)
+                    best_match_index = np.argmin(face_distances)
                     if matches[best_match_index]:
                         name = known_face_names[best_match_index]
                 else:
@@ -144,7 +197,6 @@ try:
                 processed_faces_names.append(name)
 
             if len(processed_faces_names) > 0:
-                analysis_failures = 0
                 for name in processed_faces_names:
                     # --- Logica de Log ---
                     if name not in last_log_time or (current_time - last_log_time.get(name, 0)) > LOG_COOLDOWN_SECONDS:
@@ -166,15 +218,13 @@ try:
                         
                         logging.info(f"IMAGEM SALVA para {name}: {filename}")
                         last_save_time[name] = current_time
-            else:
-                analysis_failures += 1
-
+        
         # Limpa a memoria de desconhecidos que nao aparecem ha muito tempo
         if frame_counter % (PROCESS_EVERY_N_FRAMES * 10) == 0:
-             expired_unknowns = [uid for uid, data in seen_unknown_faces.items() if current_time - data['last_seen'] > UNKNOWN_MEMORY_SECONDS]
-             for uid in expired_unknowns:
-                 del seen_unknown_faces[uid]
-                 logging.info(f"ID de desconhecido {uid} removido da memoria por inatividade.")
+            expired_unknowns = [uid for uid, data in seen_unknown_faces.items() if current_time - data['last_seen'] > UNKNOWN_MEMORY_SECONDS]
+            for uid in expired_unknowns:
+                del seen_unknown_faces[uid]
+                logging.info(f"ID de desconhecido {uid} removido da memoria por inatividade.")
         
         frame_counter += 1
 
@@ -182,6 +232,7 @@ except KeyboardInterrupt:
     logging.info("Solicitacao de encerramento recebida (Ctrl+C).")
 finally:
     logging.info("Encerrando o programa...")
-    if 'vs' in locals() and vs is not None:
-        vs.stop()
+    stop_event.set() # Sinaliza para a thread de captura parar
+    if 'capture_thread' in locals() and capture_thread.is_alive():
+        capture_thread.join() # Espera a thread terminar
     print("Script finalizado.")
