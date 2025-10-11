@@ -13,8 +13,9 @@ from datetime import datetime
 import subprocess
 
 # --- CONFIGURACOES ---
-#RTSP_URL = "rtsp://admin:Arvore32!@192.168.100.167:554/cam/realmonitor?channel=1&subtype=1"  # REDE 4G INO-CAM-001
-RTSP_URL = "rtsp://admin:Arvore32!@192.168.1.45:554/cam/realmonitor?channel=1&subtype=1" # REDE INOPRIME
+RTSP_URL = "rtsp://admin:Arvore32!@192.168.18.10:554/cam/realmonitor?channel=1&subtype=1" #david
+#RTSP_URL = "rtsp://admin:Arvore32!@192.168.1.45:554/cam/realmonitor?channel=1&subtype=1" #inoprime
+
 OUTPUT_VIDEO_DIR = "videos"
 LOG_DIR = "logs"
 

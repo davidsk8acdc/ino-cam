@@ -29,8 +29,9 @@ class VideoStream:
     def stop(self): self.stopped = True
 
 # --- CONFIGURACOES ---
-#RTSP_URL = "rtsp://admin:Arvore32!@192.168.18.10:554/cam/realmonitor?channel=1&subtype=1"
-RTSP_URL = "rtsp://admin:Arvore32!@192.168.1.45:554/cam/realmonitor?channel=1&subtype=1"
+RTSP_URL = "rtsp://admin:Arvore32!@192.168.18.10:554/cam/realmonitor?channel=1&subtype=1" #david
+#RTSP_URL = "rtsp://admin:Arvore32!@192.168.1.45:554/cam/realmonitor?channel=1&subtype=1" #inoprime
+
 ENCODINGS_FILE = 'pesos/encodings.pickle'
 RESIZE_FACTOR = 1
 TOLERANCE = 0.55
