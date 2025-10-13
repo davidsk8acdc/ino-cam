@@ -1,0 +1,9 @@
+# Tratar todos os arquivos de texto de forma automática, exceto os especificados abaixo
+* text=auto
+
+# Forçar que scripts shell (.sh) SEMPRE usem quebras de linha de Linux (LF)
+*.sh text eol=lf
+
+# Forçar que arquivos Python (.py) SEMPRE usem quebras de linha de Linux (LF)
+# e codificação UTF-8, como você prefere.
+*.py text eol=lf encoding=utf8

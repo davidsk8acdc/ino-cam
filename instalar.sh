@@ -1,55 +1,55 @@
 #!/bin/bash
 
 # =======================================================================
-#               SCRIPT DE INSTALAÃ‡ÃƒO E CONFIGURAÃ‡ÃƒO DO PROJETO
+#               SCRIPT DE INSTALAÇÃO E CONFIGURAÇÃO DO PROJETO
 # =======================================================================
 # Autor: Gemini & David
-# VersÃ£o: 7.0 - Modelo Simplificado: Instala, Configura e Reinicia.
+# Versão: 7.0 - Modelo Simplificado: Instala, Configura e Reinicia.
 # Este script prepara todo o ambiente e, ao final, reinicia o sistema
-# para que todos os serviÃ§os iniciem corretamente.
+# para que todos os serviços iniciem corretamente.
 # =======================================================================
 
 # --- BANNER INICIAL ---
 echo "============================================================================="
 echo ""
-echo "      â–ˆâ–ˆâ•—â–ˆâ–ˆâ–ˆâ•—   â–ˆâ–ˆâ•— â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•— â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•— â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•— â–ˆâ–ˆâ•—â–ˆâ–ˆâ–ˆâ•—   â–ˆâ–ˆâ–ˆâ•—â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•—"
-echo "      â–ˆâ–ˆâ•‘â–ˆâ–ˆâ–ˆâ–ˆâ•—  â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•”â•â•â•â–ˆâ–ˆâ•—â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•—â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•—â–ˆâ–ˆâ•‘â–ˆâ–ˆâ–ˆâ–ˆâ•— â–ˆâ–ˆâ–ˆâ–ˆâ•‘â–ˆâ–ˆâ•”â•â•â•â•â•"
-echo "      â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•”â–ˆâ–ˆâ•— â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•‘â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•”â•â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•”â•â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•”â–ˆâ–ˆâ–ˆâ–ˆâ•”â–ˆâ–ˆâ•‘â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•—  "
-echo "      â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘â•šâ–ˆâ–ˆâ•—â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•”â•â•â•â•â•â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•—â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘â•šâ–ˆâ–ˆâ•”â•â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•”â•â•â•  "
-echo "      â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘ â•šâ–ˆâ–ˆâ–ˆâ–ˆâ•‘â•šâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•”â•â–ˆâ–ˆâ•‘     â–ˆâ–ˆâ•‘  â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘ â•šâ•â• â–ˆâ–ˆâ•‘â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•—"
-echo "      â•šâ•â•â•šâ•â•  â•šâ•â•â•â• â•šâ•â•â•â•â•â• â•šâ•â•     â•šâ•â•  â•šâ•â•â•šâ•â•â•šâ•â•     â•šâ•â•â•šâ•â•â•â•â•â•â•"
+echo "      ¦¦+¦¦¦+   ¦¦+ ¦¦¦¦¦¦+ ¦¦¦¦¦¦+ ¦¦¦¦¦¦+ ¦¦+¦¦¦+   ¦¦¦+¦¦¦¦¦¦¦+"
+echo "      ¦¦¦¦¦¦¦+  ¦¦¦¦¦+---¦¦+¦¦+--¦¦+¦¦+--¦¦+¦¦¦¦¦¦¦+ ¦¦¦¦¦¦¦+----+"
+echo "      ¦¦¦¦¦+¦¦+ ¦¦¦¦¦¦   ¦¦¦¦¦¦¦¦¦++¦¦¦¦¦¦++¦¦¦¦¦+¦¦¦¦+¦¦¦¦¦¦¦¦+  "
+echo "      ¦¦¦¦¦¦+¦¦+¦¦¦¦¦¦   ¦¦¦¦¦+----+¦¦+--¦¦+¦¦¦¦¦¦+¦¦++¦¦¦¦¦+--+  "
+echo "      ¦¦¦¦¦¦ +¦¦¦¦¦+¦¦¦¦¦¦++¦¦¦     ¦¦¦  ¦¦¦¦¦¦¦¦¦ +-+ ¦¦¦¦¦¦¦¦¦¦+"
+echo "      +-++-+  +---+ +-----+ +-+     +-+  +-++-++-+     +-++------+"
 echo ""
 echo "============================================================================="
-echo "           INICIANDO INSTALAÃ‡ÃƒO E CONFIGURAÃ‡ÃƒO DO AMBIENTE"
+echo "           INICIANDO INSTALAÇÃO E CONFIGURAÇÃO DO AMBIENTE"
 echo "============================================================================="
 
 
 # Encerra o script imediatamente se um comando falhar
 set -e
 
-# --- VariÃ¡veis de ConfiguraÃ§Ã£o ---
+# --- Variáveis de Configuração ---
 REPO_URL="https://github.com/davidsk8acdc/ino-cam.git"
 BRANCH="10out"
 PROJECT_DIR="$HOME/ino-cam"
 VENV_DIR="$PROJECT_DIR/venv"
 USER_NAME=$(whoami)
 
-# --- PASSO 1: PREPARAÃ‡ÃƒO DO SISTEMA OPERACIONAL ---
+# --- PASSO 1: PREPARAÇÃO DO SISTEMA OPERACIONAL ---
 echo -e "\n### PASSO 1: Preparando o Sistema Operacional... ###\n"
 
 echo "[INFO] Atualizando a lista de pacotes e o sistema..."
 sudo apt update && sudo apt upgrade -y
 
-echo "[INFO] Instalando dependÃªncias de sistema (isso pode demorar)..."
+echo "[INFO] Instalando dependências de sistema (isso pode demorar)..."
 sudo apt install -y supervisor build-essential cmake pkg-config libjpeg-dev libpng-dev libtiff-dev libwebp-dev libopenjp2-7-dev libavcodec-dev libavformat-dev libswscale-dev libv4l-dev libxvidcore-dev libx264-dev libgtk-3-dev libopenblas-dev libpango1.0-dev libgdk-pixbuf-xlib-2.0-dev libhdf5-dev gfortran python3-dev git ffmpeg
 
-# --- PASSO 2: DOWNLOAD E CONFIGURAÃ‡ÃƒO DO PROJETO ---
+# --- PASSO 2: DOWNLOAD E CONFIGURAÇÃO DO PROJETO ---
 echo -e "\n### PASSO 2: Baixando e configurando o projeto... ###\n"
 
 if [ -d "$PROJECT_DIR" ]; then
-    echo "[AVISO] O diretÃ³rio do projeto '$PROJECT_DIR' jÃ¡ existe. Pulando o git clone."
+    echo "[AVISO] O diretório do projeto '$PROJECT_DIR' já existe. Pulando o git clone."
 else
-    echo "[INFO] Baixando o cÃ³digo-fonte do Git (branch: $BRANCH)..."
+    echo "[INFO] Baixando o código-fonte do Git (branch: $BRANCH)..."
     git clone -b "$BRANCH" "$REPO_URL" "$PROJECT_DIR"
 fi
 
@@ -61,15 +61,15 @@ python3 -m venv venv
 echo "[INFO] Instalando todas as bibliotecas Python (isso pode demorar)..."
 "$VENV_DIR/bin/pip" install opencv-python face_recognition watchdog ultralytics requests setuptools
 
-# --- PASSO 3: CONFIGURAÃ‡ÃƒO DO SUPERVISOR ---
+# --- PASSO 3: CONFIGURAÇÃO DO SUPERVISOR ---
 echo -e "\n### PASSO 3: Configurando o Supervisor... ###\n"
 
-echo "[INFO] Garantindo que o diretÃ³rio de configuraÃ§Ã£o do Supervisor existe..."
+echo "[INFO] Garantindo que o diretório de configuração do Supervisor existe..."
 sudo mkdir -p /etc/supervisor/conf.d/
 
 PYTHON_EXEC="$VENV_DIR/bin/python"
 
-# Cria o arquivo de configuraÃ§Ã£o com inicializaÃ§Ã£o ordenada
+# Cria o arquivo de configuração com inicialização ordenada
 sudo tee /etc/supervisor/conf.d/ino-cam.conf > /dev/null <<EOF
 [program:gerenciar_rostos]
 command=$PYTHON_EXEC $PROJECT_DIR/gerenciar_rostos.py
@@ -112,7 +112,7 @@ stdout_logfile=/dev/null
 stderr_logfile=/dev/null
 EOF
 
-echo "[INFO] Arquivo de configuraÃ§Ã£o '/etc/supervisor/conf.d/ino-cam.conf' criado."
+echo "[INFO] Arquivo de configuração '/etc/supervisor/conf.d/ino-cam.conf' criado."
 
 echo "[INFO] Ativando a interface web do Supervisor com login admin/admin..."
 CONFIG_FILE="/etc/supervisor/supervisord.conf"
@@ -127,31 +127,31 @@ password=admin
 EOF
 fi
 
-# --- PASSO 4: FINALIZAÃ‡ÃƒO ---
-echo -e "\n### PASSO 4: Finalizando a configuraÃ§Ã£o... ###\n"
+# --- PASSO 4: FINALIZAÇÃO ---
+echo -e "\n### PASSO 4: Finalizando a configuração... ###\n"
 
-echo "[INFO] Configurando o fuso horÃ¡rio para America/Sao_Paulo..."
+echo "[INFO] Configurando o fuso horário para America/Sao_Paulo..."
 sudo timedatectl set-timezone America/Sao_Paulo
 
-echo "[INFO] Habilitando o serviÃ§o do Supervisor para iniciar no prÃ³ximo boot..."
+echo "[INFO] Habilitando o serviço do Supervisor para iniciar no próximo boot..."
 sudo systemctl enable supervisor
 
 # --- MENSAGEM FINAL ---
 echo "============================================================================="
 echo ""
-echo "      â–ˆâ–ˆâ•—â–ˆâ–ˆâ–ˆâ•—   â–ˆâ–ˆâ•— â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•— â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•— â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•— â–ˆâ–ˆâ•—â–ˆâ–ˆâ–ˆâ•—   â–ˆâ–ˆâ–ˆâ•—â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•—"
-echo "      â–ˆâ–ˆâ•‘â–ˆâ–ˆâ–ˆâ–ˆâ•—  â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•”â•â•â•â–ˆâ–ˆâ•—â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•—â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•—â–ˆâ–ˆâ•‘â–ˆâ–ˆâ–ˆâ–ˆâ•— â–ˆâ–ˆâ–ˆâ–ˆâ•‘â–ˆâ–ˆâ•”â•â•â•â•â•"
-echo "      â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•”â–ˆâ–ˆâ•— â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•‘â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•”â•â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•”â•â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•”â–ˆâ–ˆâ–ˆâ–ˆâ•”â–ˆâ–ˆâ•‘â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•—  "
-echo "      â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘â•šâ–ˆâ–ˆâ•—â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•”â•â•â•â•â•â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•—â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘â•šâ–ˆâ–ˆâ•”â•â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•”â•â•â•  "
-echo "      â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘ â•šâ–ˆâ–ˆâ–ˆâ–ˆâ•‘â•šâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•”â•â–ˆâ–ˆâ•‘     â–ˆâ–ˆâ•‘  â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘ â•šâ•â• â–ˆâ–ˆâ•‘â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•—"
-echo "      â•šâ•â•â•šâ•â•  â•šâ•â•â•â• â•šâ•â•â•â•â•â• â•šâ•â•     â•šâ•â•  â•šâ•â•â•šâ•â•â•šâ•â•     â•šâ•â•â•šâ•â•â•â•â•â•â•"
+echo "      ¦¦+¦¦¦+   ¦¦+ ¦¦¦¦¦¦+ ¦¦¦¦¦¦+ ¦¦¦¦¦¦+ ¦¦+¦¦¦+   ¦¦¦+¦¦¦¦¦¦¦+"
+echo "      ¦¦¦¦¦¦¦+  ¦¦¦¦¦+---¦¦+¦¦+--¦¦+¦¦+--¦¦+¦¦¦¦¦¦¦+ ¦¦¦¦¦¦¦+----+"
+echo "      ¦¦¦¦¦+¦¦+ ¦¦¦¦¦¦   ¦¦¦¦¦¦¦¦¦++¦¦¦¦¦¦++¦¦¦¦¦+¦¦¦¦+¦¦¦¦¦¦¦¦+  "
+echo "      ¦¦¦¦¦¦+¦¦+¦¦¦¦¦¦   ¦¦¦¦¦+----+¦¦+--¦¦+¦¦¦¦¦¦+¦¦++¦¦¦¦¦+--+  "
+echo "      ¦¦¦¦¦¦ +¦¦¦¦¦+¦¦¦¦¦¦++¦¦¦     ¦¦¦  ¦¦¦¦¦¦¦¦¦ +-+ ¦¦¦¦¦¦¦¦¦¦+"
+echo "      +-++-+  +---+ +-----+ +-+     +-+  +-++-++-+     +-++------+"
 echo ""
 echo "======================================================================="
-echo "    INSTALAÃ‡ÃƒO E CONFIGURAÃ‡ÃƒO CONCLUÃDAS COM SUCESSO!"
+echo "    INSTALAÇÃO E CONFIGURAÇÃO CONCLUÍDAS COM SUCESSO!"
 echo "======================================================================="
 echo ""
-echo "O sistema serÃ¡ reiniciado em 5 segundos para aplicar todas as configuraÃ§Ãµes."
-echo "ApÃ³s o reboot, seus scripts serÃ£o iniciados automaticamente."
+echo "O sistema será reiniciado em 5 segundos para aplicar todas as configurações."
+echo "Após o reboot, seus scripts serão iniciados automaticamente."
 echo ""
 sleep 5
 sudo reboot
