@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 
-#1.0 [DAVID H.] - 10-10-25
+# 1.0 [DAVID H.] - 10-10-25
+# 2.0 [Gemini] - 22-10-25 - Remocao da logica Qualcomm e adicao de reset USB por tempo.
+# 2.1 [Gemini] - 22-10-25 - Correcao reset USB para Pi 5 (usando -l 1 e -l 3)
+# 2.2 [Gemini] - 22-10-25 - Adicao de logs de inicializacao
 
 import os
 import requests
@@ -14,6 +17,8 @@ VIDEO_DIR = "videos"
 INTERVALO = 10  # segundos entre tentativas
 LOG_FILE = "logs/cliente.log"
 MAX_THREADS = 3
+LIMITE_TEMPO_SEM_INTERNET = 30 # 1 hora (em segundos)
+# LIMITE_TEMPO_SEM_INTERNET = 30 # Para testes rapidos
 
 def log(msg):
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -37,21 +42,53 @@ def get_raspberry_id():
 
 RASPBERRY_ID = get_raspberry_id()
 
-def detectar_modem_qualcomm():
-    """Procura um modem Qualcomm via lsusb e retorna o ID vendor:product"""
+def resetar_usb_ports():
+    """
+    Reseta todas as portas USB usando uhubctl, especificando os hubs do Pi 5.
+    Requer 'sudo apt install uhubctl' e permissao NOPASSWD no sudoers.
+    """
+    log("Tentando resetar todas as portas USB (requer 'sudo' e 'uhubctl')...")
+    
+    # Locais padrao dos hubs USB do Pi 5 (ex: 1 para USB 3.0, 3 para USB 2.0)
+    hubs_para_resetar = ["1", "3"] 
+    
     try:
-        resultado = subprocess.run(["lsusb"], capture_output=True, text=True)
-        for linha in resultado.stdout.splitlines():
-            if "Qualcomm" in linha:
-                # Exemplo: Bus 001 Device 013: ID 05c6:9024 Qualcomm, Inc. Android
-                parts = linha.split("ID")
-                if len(parts) > 1:
-                    modem_id = parts[1].split()[0]
-                    return modem_id
-        return None
+        # Primeiro, desliga (off = -a 0) todos os hubs
+        log("Desligando hubs USB...")
+        for hub_location in hubs_para_resetar:
+            log(f"Desligando hub -l {hub_location}...")
+            resultado = subprocess.run(
+                ["sudo", "uhubctl", "-l", hub_location, "-a", "0"], 
+                capture_output=True, text=True, timeout=10, check=True
+            )
+            if resultado.stderr:
+                log(f"uhubctl stderr (hub {hub_location} off): {resultado.stderr}")
+            
+        # Espera um segundo para garantir o desligamento
+        time.sleep(1)
+        
+        # Agora, liga (on = -a 1) todos os hubs
+        log("Ligando hubs USB...")
+        for hub_location in hubs_para_resetar:
+            log(f"Ligando hub -l {hub_location}...")
+            resultado = subprocess.run(
+                ["sudo", "uhubctl", "-l", hub_location, "-a", "1"], 
+                capture_output=True, text=True, timeout=10, check=True
+            )
+            if resultado.stderr:
+                log(f"uhubctl stderr (hub {hub_location} on): {resultado.stderr}")
+                
+        log("Reset dos hubs USB concluido.")
+
+    except FileNotFoundError:
+        log("Erro: 'uhubctl' nao encontrado. Instale com 'sudo apt install uhubctl'")
+    except subprocess.CalledProcessError as e:
+        # Se o comando falhar (stderr nao vazio e codigo de saida != 0)
+        log(f"Erro ao executar uhubctl (CalledProcessError): {e.stderr}")
+    except subprocess.TimeoutExpired:
+        log("Erro: Comando 'uhubctl' demorou demais (timeout).")
     except Exception as e:
-        log(f"Erro ao executar lsusb: {e}")
-        return None
+        log(f"Erro inesperado ao resetar USB: {e}")
 
 def internet_disponivel(timeout=5):
     """Verifica se a internet esta funcionando"""
@@ -59,7 +96,8 @@ def internet_disponivel(timeout=5):
         requests.head("http://www.google.com", timeout=timeout)
         return True
     except:
-        log("Internet indisponivel.")
+        # Nao logamos aqui para nao poluir o log a cada 10s
+        # O loop principal vai logar
         return False
 
 def arquivo_em_uso(caminho, espera=2):
@@ -100,11 +138,10 @@ def enviar_video(caminho):
         return
 
     tipo, datahora = parse_video_info(video)
-    modem_id = detectar_modem_qualcomm()
-    if not modem_id:
-        log("Nenhum modem Qualcomm detectado. Video sera enviado apenas se internet estiver disponivel.")
-
-    log(f"Enviando {video} ... (id={RASPBERRY_ID}, type={tipo}, datetime={datahora}, modem={modem_id})")
+    
+    # Logica do modem removida
+    log(f"Enviando {video} ... (id={RASPBERRY_ID}, type={tipo}, datetime={datahora})")
+    
     try:
         with open(caminho, "rb") as f:
             files = {"file": (video, f, "video/mp4")}
@@ -125,12 +162,15 @@ def enviar_video(caminho):
 
 def enviar_videos():
     if not os.path.exists(VIDEO_DIR):
-        log("Diretorio de videos nao encontrado.")
+        # Nao logamos aqui para nao poluir o log
         return
     videos = [os.path.join(VIDEO_DIR, v) for v in os.listdir(VIDEO_DIR)
               if os.path.isfile(os.path.join(VIDEO_DIR, v))]
     if not videos:
+        # Nao logamos aqui para nao poluir o log
         return
+        
+    log(f"Encontrados {len(videos)} video(s) para processar.")
     with ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
         executor.map(enviar_video, videos)
 
@@ -138,9 +178,57 @@ def enviar_videos():
 # Loop principal
 # =========================
 if __name__ == "__main__":
+    # --- LOGS DE INICIALIZACAO ---
+    log("==================================================")
+    log(f"Iniciando servico de upload. RASPBERRY_ID: {RASPBERRY_ID}")
+    log(f"Monitorando diretorio: {VIDEO_DIR}")
+    log(f"URL da API: {API_URL}")
+    log(f"Intervalo de verificacao: {INTERVALO}s")
+    log(f"Limite sem internet para reset USB: {LIMITE_TEMPO_SEM_INTERNET}s")
+    log("==================================================")
+    
+    tempo_sem_internet_inicio = None
+    
     while True:
-        if internet_disponivel():
-            enviar_videos()
-        else:
-            log("Internet indisponivel. Aguardando...")
+        try:
+            if internet_disponivel():
+                # Internet esta OK
+                if tempo_sem_internet_inicio is not None:
+                    log("Internet restabelecida.")
+                    tempo_sem_internet_inicio = None # Reseta o contador
+                
+                enviar_videos()
+                
+            else:
+                # Internet esta FORA
+                agora = time.time()
+                
+                if tempo_sem_internet_inicio is None:
+                    # Marcar o inicio da queda
+                    log("Internet indisponivel. Marcando inicio da queda de internet.")
+                    tempo_sem_internet_inicio = agora
+                else:
+                    # Internet ja estava fora, verificar tempo
+                    tempo_decorrido = agora - tempo_sem_internet_inicio
+                    
+                    # Logar apenas a cada 60s para nao poluir o log
+                    if int(tempo_decorrido) % 60 == 0:
+                        log(f"Internet indisponivel. Tempo sem conexao: {int(tempo_decorrido)}s / {LIMITE_TEMPO_SEM_INTERNET}s")
+                    
+                    if tempo_decorrido > LIMITE_TEMPO_SEM_INTERNET:
+                        log(f"Limite de {LIMITE_TEMPO_SEM_INTERNET}s sem internet atingido. Resetando USB...")
+                        resetar_usb_ports() # Chama a funcao de reset
+                        
+                        # Apos resetar, dar um tempo extra (ex: 60s) antes de checar de novo
+                        # e resetar o contador para nao ficar resetando a cada 'INTERVALO' segundos
+                        log("Aguardando 60s apos o reset do USB...")
+                        time.sleep(60) 
+                        tempo_sem_internet_inicio = None # Reseta o contador para um novo ciclo de 1h
+                        continue # Pula o sleep de 'INTERVALO' e comeca o loop de novo
+
+        except Exception as e:
+            log(f"Erro critico no loop principal: {e}")
+            log("Aguardando 30 segundos antes de tentar novamente...")
+            time.sleep(30) # Evita spam de logs em caso de falha rapida
+
         time.sleep(INTERVALO)
