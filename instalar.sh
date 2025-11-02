@@ -1,56 +1,55 @@
 #!/bin/bash
 
 # =======================================================================
-#         SCRIPT DE INSTALA«√O E CONFIGURA«√O DO PROJETO
+#         SCRIPT DE INSTALA√á√ÉO E CONFIGURA√á√ÉO DO PROJETO
 # =======================================================================
 # Autor: Gemini & David
-# Vers„o: 7.0 - Modelo Simplificado: Instala, Configura e Reinicia.
+# Vers√£o: 7.0 - Modelo Simplificado: Instala, Configura e Reinicia.
 # Este script prepara todo o ambiente e, ao final, reinicia o sistema
-# para que todos os serviÁos iniciem corretamente.
+# para que todos os servi√ßos iniciem corretamente.
 # =======================================================================
 
 # --- BANNER INICIAL ---
 echo "============================================================================="
 echo ""
-echo "       ¶¶+¶¶¶+   ¶¶+ ¶¶¶¶¶¶+ ¶¶¶¶¶¶+ ¶¶¶¶¶¶+ ¶¶+¶¶¶+   ¶¶¶+¶¶¶¶¶¶¶+"
-echo "       ¶¶¶¶¶¶¶+  ¶¶¶¶¶+---¶¶+¶¶+--¶¶+¶¶+--¶¶+¶¶¶¶¶¶¶+ ¶¶¶¶¶¶¶+----+"
-echo "       ¶¶¶¶¶+¶¶+ ¶¶¶¶¶¶   ¶¶¶¶¶¶¶¶¶++¶¶¶¶¶¶++¶¶¶¶¶+¶¶¶¶+¶¶¶¶¶¶¶¶+  "
-echo "       ¶¶¶¶¶¶+¶¶+¶¶¶¶¶¶   ¶¶¶¶¶+----+¶¶+--¶¶+¶¶¶¶¶¶+¶¶++¶¶¶¶¶+--+  "
-echo "       ¶¶¶¶¶¶ +¶¶¶¶¶+¶¶¶¶¶¶++¶¶¶     ¶¶¶  ¶¶¶¶¶¶¶¶¶ +-+ ¶¶¶¶¶¶¶¶¶¶+"
-echo "       +-++-+  +---+ +-----+ +-+     +-+  +-++-++-+     +-++------+"
+echo "                ___ _   _  ___  ____  ____  ___ __  __ _____ "
+echo "               |_ _| \ | |/ _ \|  _ \|  _ \|_ _|  \/  | ____|"
+echo "                | ||  \| | | | | |_) | |_) || || |\/| |  _|_ "
+echo "                | || |\  | |_| |  __/|  _ < | || |  | | |___ "
+echo "               |___|_| \_|\___/|_|   |_| \_\___|_|  |_|_____|"
 echo ""
 echo "============================================================================="
-echo "               INICIANDO INSTALA«√O E CONFIGURA«√O DO AMBIENTE"
+echo "           INICIANDO INSTALA√á√ÉO E CONFIGURA√á√ÉO DO AMBIENTE"
 echo "============================================================================="
 
 
 # Encerra o script imediatamente se um comando falhar
 set -e
 
-# --- Vari·veis de ConfiguraÁ„o ---
+# --- Vari√°veis de Configura√ß√£o ---
 REPO_URL="https://github.com/davidsk8acdc/ino-cam.git"
 BRANCH="10out"
 PROJECT_DIR="$HOME/ino-cam"
 VENV_DIR="$PROJECT_DIR/venv"
 USER_NAME=$(whoami)
 
-# --- PASSO 1: PREPARA«√O DO SISTEMA OPERACIONAL ---
+# --- PASSO 1: PREPARA√á√ÉO DO SISTEMA OPERACIONAL ---
 echo -e "\n### PASSO 1: Preparando o Sistema Operacional... ###\n"
 
 echo "[INFO] Atualizando a lista de pacotes e o sistema..."
 sudo apt update && sudo apt upgrade -y
 
-echo "[INFO] Instalando dependÍncias de sistema (isso pode demorar)..."
-# Adicionado 'uhubctl' para o novo serviÁo de reset USB
+echo "[INFO] Instalando depend√™ncias de sistema (isso pode demorar)..."
+# Adicionado 'uhubctl' para o novo servi√ßo de reset USB
 sudo apt install -y supervisor uhubctl build-essential cmake pkg-config libjpeg-dev libpng-dev libtiff-dev libwebp-dev libopenjp2-7-dev libavcodec-dev libavformat-dev libswscale-dev libv4l-dev libxvidcore-dev libx264-dev libgtk-3-dev libopenblas-dev libpango1.0-dev libgdk-pixbuf-xlib-2.0-dev libhdf5-dev gfortran python3-dev git ffmpeg
 
-# --- PASSO 2: DOWNLOAD E CONFIGURA«√O DO PROJETO ---
+# --- PASSO 2: DOWNLOAD E CONFIGURA√á√ÉO DO PROJETO ---
 echo -e "\n### PASSO 2: Baixando e configurando o projeto... ###\n"
 
 if [ -d "$PROJECT_DIR" ]; then
-    echo "[AVISO] O diretÛrio do projeto '$PROJECT_DIR' j· existe. Pulando o git clone."
+    echo "[AVISO] O diret√≥rio do projeto '$PROJECT_DIR' j√° existe. Pulando o git clone."
 else
-    echo "[INFO] Baixando o cÛdigo-fonte do Git (branch: $BRANCH)..."
+    echo "[INFO] Baixando o c√≥digo-fonte do Git (branch: $BRANCH)..."
     git clone -b "$BRANCH" "$REPO_URL" "$PROJECT_DIR"
 fi
 
@@ -62,15 +61,15 @@ python3 -m venv venv
 echo "[INFO] Instalando todas as bibliotecas Python (isso pode demorar)..."
 "$VENV_DIR/bin/pip" install opencv-python face_recognition watchdog ultralytics requests setuptools flask
 
-# --- PASSO 3: CONFIGURA«√O DO SUPERVISOR ---
+# --- PASSO 3: CONFIGURA√á√ÉO DO SUPERVISOR ---
 echo -e "\n### PASSO 3: Configurando o Supervisor... ###\n"
 
-echo "[INFO] Garantindo que o diretÛrio de configuraÁ„o do Supervisor existe..."
+echo "[INFO] Garantindo que o diret√≥rio de configura√ß√£o do Supervisor existe..."
 sudo mkdir -p /etc/supervisor/conf.d/
 
 PYTHON_EXEC="$VENV_DIR/bin/python"
 
-# Cria o arquivo de configuraÁ„o com inicializaÁ„o ordenada
+# Cria o arquivo de configura√ß√£o com inicializa√ß√£o ordenada
 sudo tee /etc/supervisor/conf.d/ino-cam.conf > /dev/null <<EOF
 [program:gerenciar_rostos]
 command=$PYTHON_EXEC $PROJECT_DIR/gerenciar_rostos.py
@@ -113,7 +112,7 @@ stdout_logfile=/dev/null
 stderr_logfile=/dev/null
 EOF
 
-echo "[INFO] Arquivo de configuraÁ„o '/etc/supervisor/conf.d/ino-cam.conf' criado."
+echo "[INFO] Arquivo de configura√ß√£o '/etc/supervisor/conf.d/ino-cam.conf' criado."
 
 echo "[INFO] Ativando a interface web do Supervisor com login admin/admin..."
 CONFIG_FILE="/etc/supervisor/supervisord.conf"
@@ -128,7 +127,7 @@ password=admin
 EOF
 fi
 
-# --- PASSO 4: FINALIZA«√O E CONFIGURA«’ES DE SISTEMA ---
+# --- PASSO 4: FINALIZA√á√ÉO E CONFIGURA√á√ïES DE SISTEMA ---
 echo -e "\n### PASSO 4: Finalizando e aplicando configs de sistema... ###\n"
 
 echo "[INFO] Configurando a energia USB em /boot/firmware/config.txt..."
@@ -142,10 +141,10 @@ usb_max_current_enable=1
 EOF
 fi
 
-echo "[INFO] Desativando o bot„o Power Key em /etc/systemd/logind.conf..."
+echo "[INFO] Desativando o bot√£o Power Key em /etc/systemd/logind.conf..."
 sudo sed -i 's/^#*HandlePowerKey=.*/HandlePowerKey=ignore/' /etc/systemd/logind.conf
 
-echo "[INFO] Criando o serviÁo instant-usb-reset..."
+echo "[INFO] Criando o servi√ßo instant-usb-reset..."
 sudo tee /etc/systemd/system/instant-usb-reset.service > /dev/null <<EOF
 [Unit]
 Description=Instant USB Reset
@@ -164,32 +163,33 @@ TimeoutSec=5
 WantedBy=basic.target
 EOF
 
-echo "[INFO] Habilitando e iniciando o serviÁo instant-usb-reset..."
+echo "[INFO] Habilitando e iniciando o servi√ßo instant-usb-reset..."
 sudo systemctl enable instant-usb-reset.service
 sudo systemctl start instant-usb-reset.service
 
-echo "[INFO] Configurando o fuso hor·rio para America/Sao_Paulo..."
+echo "[INFO] Configurando o fuso hor√°rio para America/Sao_Paulo..."
 sudo timedatectl set-timezone America/Sao_Paulo
 
-echo "[INFO] Habilitando o serviÁo do Supervisor para iniciar no prÛximo boot..."
+echo "[INFO] Habilitando o servi√ßo do Supervisor para iniciar no pr√≥ximo boot..."
 sudo systemctl enable supervisor
 
 # --- MENSAGEM FINAL ---
+# --- BANNER INICIAL ---
 echo "============================================================================="
 echo ""
-echo "       ¶¶+¶¶¶+   ¶¶+ ¶¶¶¶¶¶+ ¶¶¶¶¶¶+ ¶¶¶¶¶¶+ ¶¶+¶¶¶+   ¶¶¶+¶¶¶¶¶¶¶+"
-echo "       ¶¶¶¶¶¶¶+  ¶¶¶¶¶+---¶¶+¶¶+--¶¶+¶¶+--¶¶+¶¶¶¶¶¶¶+ ¶¶¶¶¶¶¶+----+"
-echo "       ¶¶¶¶¶+¶¶+ ¶¶¶¶¶¶   ¶¶¶¶¶¶¶¶¶++¶¶¶¶¶¶++¶¶¶¶¶+¶¶¶¶+¶¶¶¶¶¶¶¶+  "
-echo "       ¶¶¶¶¶¶+¶¶+¶¶¶¶¶¶   ¶¶¶¶¶+----+¶¶+--¶¶+¶¶¶¶¶¶+¶¶++¶¶¶¶¶+--+  "
-echo "       ¶¶¶¶¶¶ +¶¶¶¶¶+¶¶¶¶¶¶++¶¶¶     ¶¶¶  ¶¶¶¶¶¶¶¶¶ +-+ ¶¶¶¶¶¶¶¶¶¶+"
-echo "       +-++-+  +---+ +-----+ +-+     +-+  +-++-++-+     +-++------+"
+echo "                ___ _   _  ___  ____  ____  ___ __  __ _____ "
+echo "               |_ _| \ | |/ _ \|  _ \|  _ \|_ _|  \/  | ____|"
+echo "                | ||  \| | | | | |_) | |_) || || |\/| |  _|_ "
+echo "                | || |\  | |_| |  __/|  _ < | || |  | | |___ "
+echo "               |___|_| \_|\___/|_|   |_| \_\___|_|  |_|_____|"
+echo ""
 echo ""
 echo "======================================================================="
-echo "   INSTALA«√O E CONFIGURA«√O CONCLUÕDAS COM SUCESSO!"
+echo "   INSTALA√á√ÉO E CONFIGURA√á√ÉO CONCLU√çDAS COM SUCESSO!"
 echo "======================================================================="
 echo ""
-echo "O sistema ser· reiniciado em 5 segundos para aplicar todas as configuraÁıes."
-echo "ApÛs o reboot, seus scripts ser„o iniciados automaticamente."
+echo "O sistema ser√° reiniciado em 5 segundos para aplicar todas as configura√ß√µes."
+echo "Ap√≥s o reboot, seus scripts ser√£o iniciados automaticamente."
 echo ""
 sleep 5
 sudo reboot
