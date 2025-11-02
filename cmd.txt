@@ -7,3 +7,13 @@
 
 cd ino-cam/logs
 tail -f reconhecimento_2025-10-11.log detec_2025-10-11.log cliente.log
+
+sudo nano /etc/systemd/logind.conf
+HandlePowerKey=ignore
+
+sudo nano /boot/firmware/config.txt
+
+
+[all]
+max_usb_current=1
+usb_max_current_enable=1
