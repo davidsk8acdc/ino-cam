@@ -17,3 +17,14 @@ sudo nano /boot/firmware/config.txt
 [all]
 max_usb_current=1
 usb_max_current_enable=1
+
+
+
+instalacao vpn
+
+sudo openvpn --config /home/david/ino-cam-002.ovpn
+sudo cp /home/david/ino-cam-002.ovpn /etc/openvpn/client/ino-cam-002.conf
+sudo systemctl enable openvpn-client@ino-cam-002
+
+ip addr show
+inet 10.8.0.8/24 scope global tun0
