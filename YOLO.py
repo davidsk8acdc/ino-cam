@@ -22,11 +22,20 @@ OUTPUT_VIDEO_DIR = "videos"
 LOG_DIR = "logs"
 LOG_LEVEL = logging.INFO
 
+# --- CONFIGURACOES DE TESTE ---
+# ATENCAO: Mudar para False para producao
+# Quando True, FORCA a velocidade alta e FORCA a deteccao para testar a gravacao
+MODO_TESTE_BANCADA = False
+
 # --- CONFIGURACOES BLE ---
-DEVICE_NAME = "GS 865513070677451"
+# ESCOLHA QUAL EQUIPAMENTO USAR (descomente a linha correta):
+#DEVICE_NAME = "GS 865513070677451" # Modelo 10x (Nao quebra pacote)
+DEVICE_NAME = "GS7X 862311067401446"  # Modelo 7x (Quebra pacote)
+
 SERVER_TX_UUID = "0783b03e-8535-b5a0-7140-a304d2495cb8"
 SERVER_RX_UUID = "0783b03e-8535-b5a0-7140-a304d2495cba"
 
+# TAG_SIZES (baseado no script validado 'ble-galileo.py')
 TAG_SIZES = {
     0x01: 1, 0x02: 1, 0x03: 15, 0x04: 2, 0x10: 2, 0x20: 4, 0x30: 9,
     0x33: 4, 0x34: 2, 0x35: 1, 0x40: 2, 0x41: 2, 0x42: 2, 0x43: 1,
@@ -37,47 +46,44 @@ TAG_SIZES = {
     0x78: 2, 0x79: 2, 0x7A: 2, 0x7B: 2, 0x7C: 2, 0x7D: 2,
     0x80: 3, 0x81: 3, 0x82: 3, 0x83: 3, 0x84: 3, 0x85: 3, 0x86: 3, 0x87: 3,
     0x88: 1, 0x89: 1, 0x8A: 1, 0x8B: 1, 0x8C: 1,
-    0x90: 4, 0xC0: 4, 0xC1: 4, 0xC2: 4, 0xC3: 4, 0xC4: 1, 0x5: 1,
+    0x90: 4, 0xC0: 4, 0xC1: 4, 0xC2: 4, 0xC3: 4, 0xC4: 1, 0xC5: 1, # <--- 0x5 CORRIGIDO PARA 0xC5
     0xC6: 1, 0xC7: 1, 0xC8: 1, 0xC9: 1, 0xCA: 1, 0xCB: 1, 0xCC: 1,
     0xCD: 1, 0xCE: 1, 0xCF: 1, 0xD0: 1, 0xD1: 1, 0xD2: 1,
-    0xD3: 4, 0xD4: 4, 0xD5: 1, 0xD6: 2, 0xD7: 2, 0xD8: 2, 0xD9: 2,
+    0xD3: 4, 0xD4: 4, 0xD5: 1, 0xD6: 2, 0xD7: 2, 0x8: 2, 0xD9: 2,
     0xDA: 2, 0xDB: 4, 0xDC: 4, 0xDD: 4, 0xDE: 4, 0xDF: 4,
     0xE2: 4, 0xE3: 4, 0xE4: 4, 0xE5: 4, 0xE6: 4, 0xE7: 4, 0xE8: 4,
     0x47: 4, 0x5D: 3, 0xEB: 2, 0x48: 2, 0x49: 1, 0x11: 4, 0x36: 1,
     0x5B: -1, 0x5C: -1, 0xE9: -1, 0xEA: -1, 0xFE: -1
 }
 
+
 # --- CONFIGURACOES YOLO/RTSP ---
 RTSP_URL = "rtsp://admin:Arvore32!@192.168.100.176:554/cam/realmonitor?channel=1&subtype=1"
 TARGET_CLASS_NAME = "standing"
-
-# NOVO: Define a velocidade minima (em km/h) para ligar a IA
-VELOCIDADE_MINIMA_PARA_IA = 5.0 # (ex: 5.0 km/h)
-
+VELOCIDADE_MINIMA_PARA_IA = 5.0
 CONFIDENCE_THRESHOLD = 0.8
 YOLO_CHECK_INTERVAL_SECONDS = 2.0
 RECORD_COOLDOWN_SECONDS = 30.0
 PRE_BUFFER_SECONDS = 5
 POST_BUFFER_SECONDS = 5
-
 FPS = 15
 WIDTH, HEIGHT = 640, 480
 FFMPEG_BITRATE = "2500k"
 
 # --- VARIAVEIS GLOBAIS COMPARTILHADAS ---
 ble_data_lock = threading.Lock()
-# MODIFICADO: Adicionado 'velocidade_float'
 latest_ble_data = {
     "timestamp_ble": None,
     "latitude_hex": "NOLAT",
     "longitude_hex": "NOLON",
     "velocidade_hex": "NOVEL",
-    "velocidade_float": 0.0, # Padrao e 0.0 (parado)
+    "velocidade_float": 0.0,
     "user_tag_1_hex": "NOTAG"
 }
-
 frame_queue = queue.Queue(maxsize=128)
 stop_event = threading.Event()
+
+packet_buffer = bytearray()
 
 # --- SISTEMA DE LOG (OTIMIZADO) ---
 os.makedirs(OUTPUT_VIDEO_DIR, exist_ok=True)
@@ -88,9 +94,7 @@ def setup_logging():
         f"[%(asctime)s] [%(threadName)-7s] [%(levelname)s] %(message)s",
         "%Y-%m-%d %H:%M:%S"
     )
-    
     log_file_path = os.path.join(LOG_DIR, f"detec.log")
-    
     file_handler = TimedRotatingFileHandler(
         log_file_path,
         when="midnight",
@@ -99,35 +103,41 @@ def setup_logging():
         encoding="utf-8"
     )
     file_handler.setFormatter(log_formatter)
-    
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setFormatter(log_formatter)
-    
     logger = logging.getLogger()
     logger.setLevel(LOG_LEVEL)
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
-    
     logging.info("Sistema de logging configurado.")
 
-# --- FUNCOES BLE ---
+# --- FUNCOES BLE (LOGICA UNIFICADA) ---
 
-# MODIFICADO: Agora decodifica o float da velocidade
-def notification_handler(sender_handle: int, data: bytearray):
-    logging.debug(f"Dados Brutos BLE: {data.hex()}")
-
+def parse_packet(data: bytearray):
+    logging.debug(f"PROCESSANDO PACOTE COMPLETO: {data.hex()}")
+    
     dados_filtrados = data[4:]
     
     if not dados_filtrados or dados_filtrados[0] != 0x01:
+        logging.warning("[ERRO PARSE]: Pacote completo nao comeca com 0x01 (apos wrapper)")
         return
 
     try:
         L_com_flag = struct.unpack('<H', dados_filtrados[1:3])[0]
         L_payload = L_com_flag & 0x7FFF
         
-        payload = dados_filtrados[3 : 3 + L_payload]
+        expected_galileo_len = 5 + L_payload
         
-        raw_data = {}
+        if len(dados_filtrados) != expected_galileo_len:
+            logging.warning(f"[ERRO PARSE]: Tamanho do pacote (sem wrapper) inconsistente.")
+            logging.warning(f"Esperado={expected_galileo_len}, Recebido={len(dados_filtrados)}")
+            return
+
+        payload = dados_filtrados[3 : 3 + L_payload]
+        checksum_start = 3 + L_payload
+        checksum = dados_filtrados[checksum_start : checksum_start + 2]
+
+        parsed_data = {}
         index = 0
         
         while index < len(payload):
@@ -136,43 +146,99 @@ def notification_handler(sender_handle: int, data: bytearray):
             
             data_size = TAG_SIZES.get(tag, -2)
             
-            if data_size == -2: break 
-            if data_size == -1: break
-            if index + data_size > len(payload): break
+            if data_size == -2: 
+                logging.warning(f"[WARN PARSE]: Tag desconhecida {hex(tag)}, parando o parse.")
+                break
+            if data_size == -1:
+                logging.warning(f"[WARN PARSE]: Tag {hex(tag)} de tamanho variavel nao implementada.")
+                break
+
+            if index + data_size > len(payload):
+                logging.warning(f"[WARN PARSE]: Fim inesperado do payload ao ler tag {hex(tag)}.")
+                break
                 
             tag_data = payload[index : index + data_size]
-            
+
             if tag == 0x20:
                 timestamp_unix = struct.unpack('<I', tag_data)[0]
-                raw_data["timestamp_ble"] = timestamp_unix
+                parsed_data["timestamp_ble"] = timestamp_unix
             
             elif tag == 0x30:
-                raw_data["latitude_hex"] = tag_data[1:5].hex()
-                raw_data["longitude_hex"] = tag_data[5:9].hex()
+                parsed_data["latitude_hex"] = tag_data[1:5].hex()
+                parsed_data["longitude_hex"] = tag_data[5:9].hex()
 
             elif tag == 0x33:
-                # Salva o HEX (para o nome do arquivo)
-                raw_data["velocidade_hex"] = tag_data[0:2].hex()
-                # Salva o FLOAT (para a logica da IA)
+                parsed_data["velocidade_hex"] = tag_data[0:2].hex()
                 spd_raw = struct.unpack('<H', tag_data[0:2])[0]
-                raw_data["velocidade_float"] = spd_raw / 10.0
+                parsed_data["velocidade_float"] = spd_raw / 10.0
 
             elif tag == 0xE3:
-                raw_data["user_tag_1_hex"] = tag_data.hex()
+                parsed_data["user_tag_1_hex"] = tag_data.hex()
             
             index += data_size
         
-        if raw_data:
+        if parsed_data:
             global latest_ble_data, ble_data_lock
             with ble_data_lock:
-                latest_ble_data.update(raw_data)
+                logging.debug(f"Atualizando dados BLE: {parsed_data}")
+                latest_ble_data.update(parsed_data)
 
     except Exception as e:
-        logging.error(f"Erro ao processar pacote BLE (light): {e}")
-        logging.error(f"Pacote com erro (light): {data.hex()}")
+        logging.error(f"[ERRO PARSE]: Erro ao decodificar: {e}", exc_info=True)
+        logging.error(f"[ERRO PARSE]: Dados brutos (do pacote completo): {data.hex(' ')}")
 
 
-# MODIFICADO: Reseta 'velocidade_float' ao desconectar
+def notification_handler(sender_handle: int, data: bytearray):
+    global packet_buffer
+    
+    if not data:
+        logging.debug("DADO BRUTO RECEBIDO: (Vazio)")
+        return
+        
+    packet_buffer.extend(data)
+    logging.debug(f"DADO BRUTO RECEBIDO: {data.hex()}")
+    
+    while True:
+        start_index = packet_buffer.find(b'\x41\xa4\x12\x21')
+        
+        if start_index == -1:
+            if len(packet_buffer) > 1024:
+                 logging.warning("[WARN BUFFER]: Buffer grande sem marcador, limpando.")
+                 packet_buffer.clear()
+            break
+            
+        if start_index > 0:
+            logging.info(f"[INFO BUFFER]: Descartando {start_index} bytes invalidos do inicio.")
+            packet_buffer = packet_buffer[start_index:]
+        
+        if len(packet_buffer) < 7:
+            break
+            
+        if packet_buffer[4] != 0x01:
+            logging.warning(f"[WARN BUFFER]: Encontrado 41a41221, mas marcador 0x01 ausente. Byte 4 e {hex(packet_buffer[4])}. Descartando.")
+            packet_buffer = packet_buffer[1:]
+            continue
+
+        try:
+            L_com_flag = struct.unpack('<H', packet_buffer[5:7])[0]
+            L_payload = L_com_flag & 0x7FFF
+            
+            total_packet_len = 9 + L_payload
+            
+            if len(packet_buffer) < total_packet_len:
+                break 
+                
+            full_packet_data = packet_buffer[:total_packet_len]
+            packet_buffer = packet_buffer[total_packet_len:]
+            
+            parse_packet(full_packet_data)
+            
+        except Exception as e:
+            logging.error(f"[ERRO BUFFER]: Erro na logica do buffer: {e}. Resetando buffer.")
+            packet_buffer.clear()
+            break
+
+
 async def main_loop(name_to_find):
     while not stop_event.is_set():
         logging.info(f"Procurando dispositivo pelo NOME: '{name_to_find}'...")
@@ -209,13 +275,16 @@ async def main_loop(name_to_find):
         finally:
             logging.info("Desconectado. Resetando dados BLE para o padrao.")
             
-            global latest_ble_data, ble_data_lock
+            global latest_ble_data, ble_data_lock, packet_buffer
+            
+            packet_buffer.clear() 
+            
             with ble_data_lock:
                 latest_ble_data["timestamp_ble"] = None
                 latest_ble_data["latitude_hex"] = "NOLAT"
                 latest_ble_data["longitude_hex"] = "NOLON"
                 latest_ble_data["velocidade_hex"] = "NOVEL"
-                latest_ble_data["velocidade_float"] = 0.0 # Reseta para 0.0 (parado)
+                latest_ble_data["velocidade_float"] = 0.0
                 latest_ble_data["user_tag_1_hex"] = "NOTAG"
             
             if client and client.is_connected:
@@ -297,7 +366,6 @@ def video_capture_thread(rtsp_url):
                 
     logging.info("Thread de captura finalizada.")
 
-# MODIFICADO: Adicionada logica de verificacao de velocidade
 def detection_thread():
     model = None
     try:
@@ -337,7 +405,6 @@ def detection_thread():
 
         now = time.time()
         
-        # --- LOGICA DE ANOTACAO E PRE-BUFFER (SEMPRE ACONTECE) ---
         annotated_frame = frame.copy()
         if last_results:
             draw_boxes(annotated_frame, last_results, target_class_id, TARGET_CLASS_NAME)
@@ -345,25 +412,27 @@ def detection_thread():
         pre_buffer.append(annotated_frame)
         
         # --- LOGICA DE VELOCIDADE ---
-        with ble_data_lock:
-            velocidade_atual = latest_ble_data["velocidade_float"]
-
+        if MODO_TESTE_BANCADA:
+            velocidade_atual = 10.0 # Forca velocidade alta para o teste
+        else:
+            with ble_data_lock:
+                velocidade_atual = latest_ble_data["velocidade_float"]
+        
+        
         if velocidade_atual < VELOCIDADE_MINIMA_PARA_IA:
-            # Velocidade baixa: Pula a IA e a gravacao para economizar CPU
-            
+            # Este e o bloco de VELOCIDADE BAIXA
             if last_results is not None:
                 logging.debug("Velocidade baixa, limpando detecoes antigas.")
-                
-            last_results = None # Limpa caixas antigas
-            last_yolo_check_time = 0 # Reseta o timer do YOLO
-            continue # Pula para o proximo frame
+            last_results = None
+            last_yolo_check_time = 0
+            continue
         
-        # --- SE CHEGOU AQUI, A VELOCIDADE ESTA ALTA ---
-        
+        # Se chegou aqui, a velocidade e ALTA
+            
         standing_detected_in_check = False
 
         if now - last_yolo_check_time > YOLO_CHECK_INTERVAL_SECONDS and target_class_id != -1:
-            logging.debug("Velocidade ALTA, rodando predicao YOLO...")
+            logging.info("IA: Rodando predicao YOLO...")
             try:
                 results = model.predict(frame, 
                                         conf=CONFIDENCE_THRESHOLD, 
@@ -374,15 +443,23 @@ def detection_thread():
                 last_yolo_check_time = now
                 
                 if len(results.boxes) > 0:
+                    logging.info(f"IA: DETECTADO {len(results.boxes)} '{TARGET_CLASS_NAME}'!")
                     last_results = results
                     standing_detected_in_check = True
                 else:
+                    logging.info("IA: Nenhuma deteccao.")
                     last_results = None
+
+                # --- FORCAR DETECCAO (TESTE DE BANCADA) ---
+                if MODO_TESTE_BANCADA and not standing_detected_in_check:
+                    logging.warning("TESTE BANCADA: Forcando 'standing_detected_in_check = True' para testar gravacao.")
+                    standing_detected_in_check = True
+                # --- FIM DO TESTE ---
+                    
             except Exception as e:
                 logging.error(f"Erro na predicao YOLO: {e}", exc_info=True)
                 continue
 
-        # --- LOGICA DE GRAVACAO (So acontece se a velocidade estiver alta) ---
         if standing_detected_in_check and not recording and (now - last_record_trigger_time > RECORD_COOLDOWN_SECONDS):
             last_record_trigger_time = now
             
@@ -422,7 +499,6 @@ def detection_thread():
                 
                 logging.info(f"Gravacao com dados BLE iniciada: {filename}")
                 
-                # Descarrega o pre-buffer (que ja tem os frames corretos)
                 for f in list(pre_buffer):
                     ffmpeg_process.stdin.write(f.tobytes())
                     
@@ -440,7 +516,6 @@ def detection_thread():
 
         if recording and ffmpeg_process:
             try:
-                # O frame ja foi anotado no inicio do loop
                 ffmpeg_process.stdin.write(annotated_frame.tobytes())
                 post_frames_remaining -= 1
                 
@@ -466,7 +541,7 @@ def detection_thread():
             
     logging.info("Thread de deteccao finalizada.")
 
-# --- EXECUCAO PRINCIPAL ---
+# --- EXECUCAO PRINCIPAL (Nenhuma mudanca necessaria) ---
 if __name__ == '__main__':
     setup_logging()
     
@@ -500,7 +575,7 @@ if __name__ == '__main__':
             time.sleep(1)
             
     except KeyboardInterrupt:
-        logging.info("Sinal de interrupcao recebido (Ctrl+C). Encerrando threads...")
+        logging.info("Sinal de interrupcao recebido (Ctrl-C). Encerrando threads...")
     finally:
         stop_event.set()
         
